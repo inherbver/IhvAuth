@@ -16,6 +16,9 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// La liste locale ADMIN_USERS est supprimée, nous utilisons maintenant la table admin_users
+// avec Row Level Security (RLS) pour une meilleure sécurité
+
 // Step 5: Define essential middlewares
 app.use(express.json()); // Parses incoming JSON requests
 app.use(cors({
@@ -91,6 +94,46 @@ app.get('/api/auth/user', async (req, res) => {
     });
   } catch (error) {
     console.error('Get user error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get user role endpoint
+app.get('/api/auth/role', async (req, res) => {
+  try {
+    const token = req.cookies.auth_token;
+    
+    if (!token) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+    
+    // Verify the token with Supabase
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    
+    if (error || !user) {
+      // Clear invalid cookie
+      res.clearCookie('auth_token');
+      return res.status(401).json({ error: 'Invalid or expired session' });
+    }
+    
+    // =======================
+    // METHODE TABLE admin_users avec RLS
+    // =======================
+    const { data: adminRow, error: adminError } = await supabase
+      .from('admin_users')
+      .select('user_id')
+      .eq('user_id', user.id)
+      .single();
+
+    if (adminError || !adminRow) {
+      // L'utilisateur n'est pas dans admin_users => role = user
+      return res.status(200).json({ role: 'user' });
+    } else {
+      // L'utilisateur est dans admin_users => role = admin
+      return res.status(200).json({ role: 'admin' });
+    }
+  } catch (error) {
+    console.error('Get role error:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
