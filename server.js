@@ -22,8 +22,10 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 // Step 5: Define essential middlewares
 app.use(express.json()); // Parses incoming JSON requests
 app.use(cors({
-  origin: true, // Allows all origins
+  origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002'],
   credentials: true, // Allows sending of cookies
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(cookieParser()); // Parses cookies
 
